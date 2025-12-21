@@ -1,12 +1,11 @@
-#include "cpu.h"
 #include "mem.h"
+#include "cpu.h"
 
 #include <stdint.h>
-#include <stdio.h>
 
 int main(void)
 {
-	struct CPU cpu;
+	CPU cpu;
 	cpu_init(&cpu);
 
 	memory_init();	
