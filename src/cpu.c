@@ -374,6 +374,8 @@ uint8_t SED(CPU *cpu)
 
 uint8_t SEI(CPU *cpu)
 { 
+	set_flag(cpu, INTERRUPT_DISABLE, true); // Delayed by one instruction?
+
 	return 0x00; 
 }
 
