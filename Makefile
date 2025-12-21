@@ -1,5 +1,5 @@
 CC      = gcc
-CFLAGS  = -Wall -Wextra -Iinclude
+CFLAGS  = -Iinclude
 SRC     = src/main.c src/mem.c src/cpu.c
 OBJ     = $(SRC:.c=.o)
 TARGET  = program

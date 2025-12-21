@@ -2,6 +2,8 @@
 #define CPU_H
 
 #include <stdint.h>
+#include <stdbool.h>
+#include "status_flag.h"
 
 typedef struct {
 	/* registers: accumulator, x, y, stack pointer, status register, program counter
@@ -21,7 +23,7 @@ typedef struct {
 } CPU;
 
 typedef uint8_t (*op_fn)(CPU *cpu);
-typedef void (*addr_fn)(CPU *cpu);
+typedef uint8_t (*addr_fn)(CPU *cpu);
 
 typedef struct {
     const char *name;
@@ -31,6 +33,10 @@ typedef struct {
 } Opcode;
 
 void cpu_init(CPU *cpu);
+void cpu_step(CPU *cpu);
+
+void set_flag(CPU *cpu, enum StatusFlag bit, bool val);
+void set_zero_negative_flag(CPU *cpu, uint8_t val);
 
 uint8_t ADC(CPU *cpu);
 uint8_t AND(CPU *cpu);
@@ -92,13 +98,23 @@ uint8_t TYA(CPU *cpu);
 uint8_t ILL(CPU *cpu); // illegal instruction
 
 // other operations
-void IRQ(CPU *cpu);
-void NMI(CPU *cpu);
+uint8_t IRQ(CPU *cpu);
+uint8_t NMI(CPU *cpu);
 
-void IMP(CPU *cpu);
-void IMM(CPU *cpu);
-void ZP0(CPU *cpu);
-void ABS(CPU *cpu);  
-void REL(CPU *cpu); 
+// Adressing modes
+uint8_t ACC(CPU *cpu);
+uint8_t IMP(CPU *cpu);
+uint8_t IND(CPU *cpu); 
+uint8_t IDX(CPU *cpu); 
+uint8_t IDY(CPU *cpu); 
+uint8_t IMM(CPU *cpu);
+uint8_t IMP(CPU *cpu);
+uint8_t ZP0(CPU *cpu);
+uint8_t ZPX(CPU *cpu);
+uint8_t ZPY(CPU *cpu);
+uint8_t ABS(CPU *cpu);  
+uint8_t ABX(CPU *cpu);
+uint8_t ABY(CPU *cpu);
+uint8_t REL(CPU *cpu); 
 
 #endif
