@@ -197,13 +197,25 @@ uint8_t ADC(CPU *cpu){ return 0x00; }
 uint8_t AND(CPU *cpu)
 { 
 	cpu->acc &= cpu_fetch(cpu);
+	cpu->pc++;
 
 	set_zero_negative_flag(cpu, cpu->acc);
 
 	return 0x00; 
 }
 
-uint8_t ASL(CPU *cpu){ return 0x00; }
+uint8_t ASL(CPU *cpu)
+{ 
+	uint8_t new_data = (cpu_read_byte(cpu, cpu->pc)) << 1;
+	cpu_write_byte(cpu, cpu->pc, new_data);
+
+	set_flag(cpu, ZERO, new_data == 0);
+
+	cpu->pc++;
+
+	return 0x00; 
+}
+
 uint8_t BCC(CPU *cpu){ return 0x00; }
 uint8_t BCS(CPU *cpu){ return 0x00; }
 uint8_t BEQ(CPU *cpu){ return 0x00; }
@@ -246,6 +258,7 @@ uint8_t CLV(CPU *cpu)
 uint8_t CMP(CPU *cpu)
 { 
 	uint8_t data = cpu_fetch(cpu);
+	cpu->pc++;
 
 	set_flag(cpu, CARRY, cpu->acc >= data);
 	set_flag(cpu, ZERO, cpu->acc == data);
@@ -257,6 +270,7 @@ uint8_t CMP(CPU *cpu)
 uint8_t CPX(CPU *cpu)
 { 
 	uint8_t data = cpu_fetch(cpu);
+	cpu->pc++;
 
 	set_flag(cpu, CARRY, cpu->x >= data);
 	set_flag(cpu, ZERO, cpu->x == data);
@@ -268,6 +282,7 @@ uint8_t CPX(CPU *cpu)
 uint8_t CPY(CPU *cpu)
 { 
 	uint8_t data = cpu_fetch(cpu);
+	cpu->pc++;
 
 	set_flag(cpu, CARRY, cpu->y >= data);
 	set_flag(cpu, ZERO, cpu->y == data);
@@ -279,6 +294,8 @@ uint8_t CPY(CPU *cpu)
 uint8_t DEC(CPU *cpu)
 { 
 	uint8_t new_val = (cpu_fetch(cpu) - 1);
+	cpu->pc++;
+
 	cpu_write_byte(cpu, cpu->addr_abs, new_val);
 
 	set_zero_negative_flag(cpu, new_val);
@@ -306,6 +323,7 @@ uint8_t DEY(CPU *cpu)
 
 uint8_t EOR(CPU *cpu){ 
 	cpu->acc ^= cpu_fetch(cpu);
+	cpu->pc++;
 
 	set_zero_negative_flag(cpu, cpu->acc);
 
@@ -316,6 +334,8 @@ uint8_t EOR(CPU *cpu){
 uint8_t INC(CPU *cpu)
 { 
 	uint8_t new_val = (cpu_fetch(cpu) + 1);
+	cpu->pc++;
+
 	cpu_write_byte(cpu, cpu->addr_abs, new_val);
 
 	set_zero_negative_flag(cpu, new_val);
@@ -341,8 +361,33 @@ uint8_t INY(CPU *cpu)
 	return 0x00; 
 }
 
-uint8_t JMP(CPU *cpu){ return 0x00; }
-uint8_t JSR(CPU *cpu){ return 0x00; }
+uint8_t JMP(CPU *cpu)
+{ 
+	uint8_t lo = cpu_fetch(cpu);
+	cpu->pc++;
+
+	uint8_t hi = cpu_fetch(cpu);
+	cpu->pc++; 
+
+	cpu->pc = (hi << 8) | lo;
+
+	return 0x00; 
+}
+
+uint8_t JSR(CPU *cpu)
+{ 
+	uint8_t hi = cpu->pc >> 8;
+	uint8_t lo = cpu->pc & 0xFF;
+
+	cpu_write_byte(cpu, STACK_OFFSET + cpu->sp, hi);
+	cpu->sp--;
+
+	cpu_write_byte(cpu, STACK_OFFSET + cpu->sp, lo);
+	cpu->sp--;
+
+	return 0x00; 
+}
+
 uint8_t LDA(CPU *cpu)
 { 
 	cpu->acc = cpu_fetch(cpu);
@@ -364,23 +409,121 @@ uint8_t LDY(CPU *cpu)
 	return 0x00; 
 }
 
-uint8_t LSR(CPU *cpu){ return 0x00; }
+uint8_t LSR(CPU *cpu)
+{ 
+	uint8_t new_data = (cpu_read_byte(cpu, cpu->pc) >> 1);
+	cpu_write_byte(cpu, cpu->pc, new_data);
+
+	set_flag(cpu, ZERO, new_data == 0);
+
+	cpu->pc++;
+
+	return 0x00; 
+}
 
 uint8_t NOP(CPU *cpu)
 { 
 	return 0x00; 
 }
 
-uint8_t ORA(CPU *cpu){ return 0x00; }
-uint8_t PHA(CPU *cpu){ return 0x00; }
-uint8_t PHP(CPU *cpu){ return 0x00; }
-uint8_t PLA(CPU *cpu){ return 0x00; }
-uint8_t PLP(CPU *cpu){ return 0x00; }
-uint8_t ROL(CPU *cpu){ return 0x00; }
-uint8_t ROR(CPU *cpu){ return 0x00; }
-uint8_t RTI(CPU *cpu){ return 0x00; }
-uint8_t RTS(CPU *cpu){ return 0x00; }
-uint8_t SBC(CPU *cpu){ return 0x00; }
+uint8_t ORA(CPU *cpu)
+{ 
+	cpu->acc |= cpu_fetch(cpu);
+
+	return 0x00; 
+}
+
+uint8_t PHA(CPU *cpu)
+{ 
+	cpu_write_byte(cpu, STACK_OFFSET + cpu->sp, cpu->acc);
+
+	cpu->sp--;
+
+	return 0x00; 
+}
+
+uint8_t PHP(CPU *cpu)
+{ 
+	cpu_write_byte(cpu, STACK_OFFSET + cpu->sp, (cpu->sr & 0b11001111) | 0b00110000);
+
+	cpu->sp--;
+
+	return 0x00; 
+}
+
+uint8_t PLA(CPU *cpu)
+{ 
+	cpu->sp++;
+
+	cpu->acc = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
+
+	return 0x00; 
+}
+
+uint8_t PLP(CPU *cpu)
+{
+	cpu->sp++;
+
+	uint8_t pulled_sr = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
+
+    cpu->sr = (pulled_sr & 0x110011111) | 0b00100000;
+
+	return 0x00; 
+}
+
+uint8_t ROL(CPU *cpu){ 
+	uint8_t new_data = (cpu_read_byte(cpu, cpu->pc) << 1);
+	cpu_write_byte(cpu, cpu->pc, new_data);
+
+	set_flag(cpu, ZERO, new_data == 0);
+
+	cpu->pc++;
+
+	return 0x00; 
+}
+
+uint8_t ROR(CPU *cpu)
+{
+	uint8_t new_data = (cpu_read_byte(cpu, cpu->pc) >> 1);
+	cpu_write_byte(cpu, cpu->pc, new_data);
+
+	set_flag(cpu, ZERO, new_data == 0);
+
+	cpu->pc++;
+
+	return 0x00; 
+}
+
+uint8_t RTI(CPU *cpu) 
+{
+    cpu->sp++;
+    uint8_t pulled_sr = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
+    
+    cpu->sr = (pulled_sr & 0x110011111) | 0b00100000;
+
+    cpu->sp++;
+    uint8_t pc_lo = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
+
+    cpu->sp++;
+    uint8_t pc_hi = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
+
+    cpu->pc = ((pc_hi << 8) | pc_lo);
+
+    return 0x00; 
+}
+
+uint8_t RTS(CPU *cpu)
+{ 
+	cpu->pc = cpu_read_word(cpu, STACK_OFFSET + cpu->sp);
+	cpu->pc++;
+
+	return 0x00; 
+}
+
+uint8_t SBC(CPU *cpu)
+{
+	return 0x00; 
+}
 
 uint8_t SEC(CPU *cpu)
 { 
@@ -451,7 +594,8 @@ uint8_t TSX(CPU *cpu)
 	return 0x00; 
 }
 
-uint8_t TXA(CPU *cpu){ 
+uint8_t TXA(CPU *cpu)
+{ 
 	cpu->acc = cpu->x;
 
 	set_zero_negative_flag(cpu, cpu->acc);
@@ -477,12 +621,11 @@ uint8_t TYA(CPU *cpu)
 	return 0x00; 
 }
 
-uint8_t ILL(CPU *cpu) // illegal instruction
+uint8_t ILL(CPU *cpu)
 { 
 	return 0x00; 
 } 
 
-// other operations
 uint8_t IRQ(CPU *cpu)
 { 
 	return 0x00;
@@ -496,7 +639,6 @@ uint8_t NMI(CPU *cpu)
 // Addressing modes
 uint8_t ACC(CPU *cpu) 
 {
-
 	return 0x00;
 }
 
@@ -518,6 +660,7 @@ uint8_t IDX(CPU *cpu)
 uint8_t IMM(CPU *cpu)
 {
 	cpu->addr_abs = cpu->pc++;
+
 	return 0x00;
 }
 
@@ -545,16 +688,18 @@ uint8_t ABS(CPU *cpu)
 {
 	cpu->addr_abs = cpu->fetched;
 	cpu->pc++;
+
 	return 0x00;
 }
+
 uint8_t ABX(CPU *cpu)
 {
+
 	return 0x00;
 }
+
 uint8_t ABY(CPU *cpu)
 {
-	cpu->addr_abs = cpu->fetched;
-	cpu->pc++;
 	return 0x00;
 }
 

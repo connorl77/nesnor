@@ -6,9 +6,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "bus.h"
-#include "status_flag.h"
 
-typedef struct {
+typedef struct 
+{
 	/* registers: accumulator, x, y, stack pointer, status register, program counter
 	status register: bit 5 can not be changed and is always set to 1.
 	   | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
@@ -30,12 +30,25 @@ typedef struct {
 typedef uint8_t (*op_fn)(CPU *cpu);
 typedef uint8_t (*addr_fn)(CPU *cpu);
 
-typedef struct {
+typedef struct 
+{
     const char *name;
     op_fn operate;
     addr_fn addrmode;
     uint8_t cycles;
 } Opcode;
+
+typedef enum 
+{
+	CARRY = 0,
+	ZERO = 1,
+	INTERRUPT_DISABLE = 2,
+	DECIMAL = 3,
+	B = 4,
+	UNUSED = 5,
+	OVERFLOW = 6,
+	NEGATIVE = 7
+} StatusFlag;
 
 void cpu_init(CPU *cpu);
 void cpu_step(CPU *cpu);
