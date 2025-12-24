@@ -1,4 +1,4 @@
-enum StatusFlag {
+typedef enum {
 	CARRY = 0,
 	ZERO = 1,
 	INTERRUPT_DISABLE = 2,
@@ -7,4 +7,4 @@ enum StatusFlag {
 	UNUSED = 5,
 	OVERFLOW = 6,
 	NEGATIVE = 7
-};
+} StatusFlag;

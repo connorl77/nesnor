@@ -1,102 +1,102 @@
 #include "cpu.h"
-#include "mem.h"
 
-Opcode opcode_table[256] = {
-/* 0x00 */
-{ "BRK", BRK, IMP, 7 }, { "ORA", ORA, IDX, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ZP0, 3 },  { "ORA", ORA, ZP0, 3 },   { "ASL", ASL, ZP0, 5 },      { "???", ILL, IMP, 2 },
-{ "PHP", PHP, IMP, 3 }, { "ORA", ORA, IMM, 2 },  { "ASL", ASL, ACC, 2 },     { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ABS, 4 }, { "ORA", ORA, ABS, 4 },  { "ASL", ASL, ABS, 6 },     { "???", ILL, IMP, 2 },
+Opcode opcode_table[256] = 
+{
+	/* 0x00 */
+	{ "BRK", BRK, IMP, 7 }, { "ORA", ORA, IDX, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ZP0, 3 }, { "ORA", ORA, ZP0, 3 }, { "ASL", ASL, ZP0, 5 }, { "???", ILL, IMP, 2 },
+	{ "PHP", PHP, IMP, 3 }, { "ORA", ORA, IMM, 2 }, { "ASL", ASL, ACC, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ABS, 4 }, { "ORA", ORA, ABS, 4 }, { "ASL", ASL, ABS, 6 }, { "???", ILL, IMP, 2 },
 
-/* 0x10 */
-{ "BPL", BPL, REL, 2 }, { "ORA", ORA, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ZPX, 4 }, { "ORA", ORA, ZPX, 4 },  { "ASL", ASL, ZPX, 6 },     { "???", ILL, IMP, 2 },
-{ "CLC", CLC, IMP, 2 }, { "ORA", ORA, ABY, 4 }, { "NOP", NOP, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ABX, 4 },{ "ORA", ORA, ABX, 4 }, { "ASL", ASL, ABX, 7 },    { "???", ILL, IMP, 2 },
+	/* 0x10 */
+	{ "BPL", BPL, REL, 2 }, { "ORA", ORA, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ZPX, 4 }, { "ORA", ORA, ZPX, 4 }, { "ASL", ASL, ZPX, 6 }, { "???", ILL, IMP, 2 },
+	{ "CLC", CLC, IMP, 2 }, { "ORA", ORA, ABY, 4 }, { "NOP", NOP, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ABX, 4 }, { "ORA", ORA, ABX, 4 }, { "ASL", ASL, ABX, 7 }, { "???", ILL, IMP, 2 },
 
-/* 0x20 */
-{ "JSR", JSR, ABS, 6 }, { "AND", AND, IDX, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "BIT", BIT, ZP0, 3 },  { "AND", AND, ZP0, 3 },   { "ROL", ROL, ZP0, 5 },      { "???", ILL, IMP, 2 },
-{ "PLP", PLP, IMP, 4 }, { "AND", AND, IMM, 2 },  { "ROL", ROL, ACC, 2 },     { "???", ILL, IMP, 2 },
-{ "BIT", BIT, ABS, 4 }, { "AND", AND, ABS, 4 },  { "ROL", ROL, ABS, 6 },     { "???", ILL, IMP, 2 },
+	/* 0x20 */
+	{ "JSR", JSR, ABS, 6 }, { "AND", AND, IDX, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "BIT", BIT, ZP0, 3 }, { "AND", AND, ZP0, 3 }, { "ROL", ROL, ZP0, 5 }, { "???", ILL, IMP, 2 },
+	{ "PLP", PLP, IMP, 4 }, { "AND", AND, IMM, 2 }, { "ROL", ROL, ACC, 2 }, { "???", ILL, IMP, 2 },
+	{ "BIT", BIT, ABS, 4 }, { "AND", AND, ABS, 4 }, { "ROL", ROL, ABS, 6 }, { "???", ILL, IMP, 2 },
 
-/* 0x30 */
-{ "BMI", BMI, REL, 2 }, { "AND", AND, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ZPX, 4 }, { "AND", AND, ZPX, 4 },  { "ROL", ROL, ZPX, 6 },     { "???", ILL, IMP, 2 },
-{ "SEC", SEC, IMP, 2 }, { "AND", AND, ABY, 4 }, { "NOP", NOP, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ABX, 4 },{ "AND", AND, ABX, 4 }, { "ROL", ROL, ABX, 7 },    { "???", ILL, IMP, 2 },
+	/* 0x30 */
+	{ "BMI", BMI, REL, 2 }, { "AND", AND, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ZPX, 4 }, { "AND", AND, ZPX, 4 }, { "ROL", ROL, ZPX, 6 }, { "???", ILL, IMP, 2 },
+	{ "SEC", SEC, IMP, 2 }, { "AND", AND, ABY, 4 }, { "NOP", NOP, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ABX, 4 }, { "AND", AND, ABX, 4 }, { "ROL", ROL, ABX, 7 }, { "???", ILL, IMP, 2 },
 
-/* 0x40 */
-{ "RTI", RTI, IMP, 6 }, { "EOR", EOR, IDX, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ZP0, 3 },  { "EOR", EOR, ZP0, 3 },   { "LSR", LSR, ZP0, 5 },      { "???", ILL, IMP, 2 },
-{ "PHA", PHA, IMP, 3 }, { "EOR", EOR, IMM, 2 },  { "LSR", LSR, ACC, 2 },     { "???", ILL, IMP, 2 },
-{ "JMP", JMP, ABS, 3 }, { "EOR", EOR, ABS, 4 },  { "LSR", LSR, ABS, 6 },     { "???", ILL, IMP, 2 },
+	/* 0x40 */
+	{ "RTI", RTI, IMP, 6 }, { "EOR", EOR, IDX, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ZP0, 3 }, { "EOR", EOR, ZP0, 3 }, { "LSR", LSR, ZP0, 5 }, { "???", ILL, IMP, 2 },
+	{ "PHA", PHA, IMP, 3 }, { "EOR", EOR, IMM, 2 }, { "LSR", LSR, ACC, 2 }, { "???", ILL, IMP, 2 },
+	{ "JMP", JMP, ABS, 3 }, { "EOR", EOR, ABS, 4 }, { "LSR", LSR, ABS, 6 }, { "???", ILL, IMP, 2 },
 
-/* 0x50 */
-{ "BVC", BVC, REL, 2 }, { "EOR", EOR, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ZPX, 4 }, { "EOR", EOR, ZPX, 4 },  { "LSR", LSR, ZPX, 6 },     { "???", ILL, IMP, 2 },
-{ "CLI", CLI, IMP, 2 }, { "EOR", EOR, ABY, 4 }, { "NOP", NOP, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ABX, 4 },{ "EOR", EOR, ABX, 4 }, { "LSR", LSR, ABX, 7 },    { "???", ILL, IMP, 2 },
+	/* 0x50 */
+	{ "BVC", BVC, REL, 2 }, { "EOR", EOR, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ZPX, 4 }, { "EOR", EOR, ZPX, 4 }, { "LSR", LSR, ZPX, 6 }, { "???", ILL, IMP, 2 },
+	{ "CLI", CLI, IMP, 2 }, { "EOR", EOR, ABY, 4 }, { "NOP", NOP, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ABX, 4 }, { "EOR", EOR, ABX, 4 }, { "LSR", LSR, ABX, 7 }, { "???", ILL, IMP, 2 },
 
-/* 0x60 */
-{ "RTS", RTS, IMP, 6 }, { "ADC", ADC, IDX, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ZP0, 3 },  { "ADC", ADC, ZP0, 3 },   { "ROR", ROR, ZP0, 5 },      { "???", ILL, IMP, 2 },
-{ "PLA", PLA, IMP, 4 }, { "ADC", ADC, IMM, 2 },  { "ROR", ROR, ACC, 2 },     { "???", ILL, IMP, 2 },
-{ "JMP", JMP, IND, 5 }, { "ADC", ADC, ABS, 4 },  { "ROR", ROR, ABS, 6 },     { "???", ILL, IMP, 2 },
+	/* 0x60 */
+	{ "RTS", RTS, IMP, 6 }, { "ADC", ADC, IDX, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ZP0, 3 }, { "ADC", ADC, ZP0, 3 }, { "ROR", ROR, ZP0, 5 }, { "???", ILL, IMP, 2 },
+	{ "PLA", PLA, IMP, 4 }, { "ADC", ADC, IMM, 2 }, { "ROR", ROR, ACC, 2 }, { "???", ILL, IMP, 2 },
+	{ "JMP", JMP, IND, 5 }, { "ADC", ADC, ABS, 4 }, { "ROR", ROR, ABS, 6 }, { "???", ILL, IMP, 2 },
 
-/* 0x70 */
-{ "BVS", BVS, REL, 2 }, { "ADC", ADC, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ZPX, 4 }, { "ADC", ADC, ZPX, 4 },  { "ROR", ROR, ZPX, 6 },     { "???", ILL, IMP, 2 },
-{ "SEI", SEI, IMP, 2 }, { "ADC", ADC, ABY, 4 }, { "NOP", NOP, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ABX, 4 },{ "ADC", ADC, ABX, 4 }, { "ROR", ROR, ABX, 7 },    { "???", ILL, IMP, 2 },
+	/* 0x70 */
+	{ "BVS", BVS, REL, 2 }, { "ADC", ADC, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ZPX, 4 }, { "ADC", ADC, ZPX, 4 }, { "ROR", ROR, ZPX, 6 }, { "???", ILL, IMP, 2 },
+	{ "SEI", SEI, IMP, 2 }, { "ADC", ADC, ABY, 4 }, { "NOP", NOP, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ABX, 4 }, { "ADC", ADC, ABX, 4 }, { "ROR", ROR, ABX, 7 }, { "???", ILL, IMP, 2 },
 
-/* 0x80 */
-{ "NOP", NOP, IMM, 2 }, { "STA", STA, IDX, 6 }, { "NOP", NOP, IMM, 2 },     { "???", ILL, IMP, 2 },
-{ "STY", STY, ZP0, 3 },  { "STA", STA, ZP0, 3 },   { "STX", STX, ZP0, 3 },      { "???", ILL, IMP, 2 },
-{ "DEY", DEY, IMP, 2 }, { "NOP", NOP, IMM, 2 },  { "TXA", TXA, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "STY", STY, ABS, 4 }, { "STA", STA, ABS, 4 },  { "STX", STX, ABS, 4 },     { "???", ILL, IMP, 2 },
+	/* 0x80 */
+	{ "NOP", NOP, IMM, 2 }, { "STA", STA, IDX, 6 }, { "NOP", NOP, IMM, 2 }, { "???", ILL, IMP, 2 },
+	{ "STY", STY, ZP0, 3 }, { "STA", STA, ZP0, 3 }, { "STX", STX, ZP0, 3 }, { "???", ILL, IMP, 2 },
+	{ "DEY", DEY, IMP, 2 }, { "NOP", NOP, IMM, 2 }, { "TXA", TXA, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "STY", STY, ABS, 4 }, { "STA", STA, ABS, 4 }, { "STX", STX, ABS, 4 }, { "???", ILL, IMP, 2 },
 
-/* 0x90 */
-{ "BCC", BCC, REL, 2 }, { "STA", STA, IDY, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "STY", STY, ZPX, 4 }, { "STA", STA, ZPX, 4 },  { "STX", STX, ZPY, 4 },     { "???", ILL, IMP, 2 },
-{ "TYA", TYA, IMP, 2 }, { "STA", STA, ABY, 5 }, { "TXS", TXS, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ABX, 5 },{ "STA", STA, ABX, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	/* 0x90 */
+	{ "BCC", BCC, REL, 2 }, { "STA", STA, IDY, 6 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "STY", STY, ZPX, 4 }, { "STA", STA, ZPX, 4 }, { "STX", STX, ZPY, 4 }, { "???", ILL, IMP, 2 },
+	{ "TYA", TYA, IMP, 2 }, { "STA", STA, ABY, 5 }, { "TXS", TXS, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ABX, 5 }, { "STA", STA, ABX, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
 
-/* 0xA0 */
-{ "LDY", LDY, IMM, 2 }, { "LDA", LDA, IDX, 6 }, { "LDX", LDX, IMM, 2 },     { "???", ILL, IMP, 2 },
-{ "LDY", LDY, ZP0, 3 },  { "LDA", LDA, ZP0, 3 },   { "LDX", LDX, ZP0, 3 },      { "???", ILL, IMP, 2 },
-{ "TAY", TAY, IMP, 2 }, { "LDA", LDA, IMM, 2 },  { "TAX", TAX, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "LDY", LDY, ABS, 4 }, { "LDA", LDA, ABS, 4 },  { "LDX", LDX, ABS, 4 },     { "???", ILL, IMP, 2 },
+	/* 0xA0 */
+	{ "LDY", LDY, IMM, 2 }, { "LDA", LDA, IDX, 6 }, { "LDX", LDX, IMM, 2 }, { "???", ILL, IMP, 2 },
+	{ "LDY", LDY, ZP0, 3 }, { "LDA", LDA, ZP0, 3 }, { "LDX", LDX, ZP0, 3 }, { "???", ILL, IMP, 2 },
+	{ "TAY", TAY, IMP, 2 }, { "LDA", LDA, IMM, 2 }, { "TAX", TAX, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "LDY", LDY, ABS, 4 }, { "LDA", LDA, ABS, 4 }, { "LDX", LDX, ABS, 4 }, { "???", ILL, IMP, 2 },
 
-/* 0xB0 */
-{ "BCS", BCS, REL, 2 }, { "LDA", LDA, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "LDY", LDY, ZPX, 4 }, { "LDA", LDA, ZPX, 4 },  { "LDX", LDX, ZPY, 4 },     { "???", ILL, IMP, 2 },
-{ "CLV", CLV, IMP, 2 }, { "LDA", LDA, ABY, 4 }, { "TSX", TSX, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "LDY", LDY, ABX, 4 },{ "LDA", LDA, ABX, 4 }, { "LDX", LDX, ABY, 4 },    { "???", ILL, IMP, 2 },
+	/* 0xB0 */
+	{ "BCS", BCS, REL, 2 }, { "LDA", LDA, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "LDY", LDY, ZPX, 4 }, { "LDA", LDA, ZPX, 4 }, { "LDX", LDX, ZPY, 4 }, { "???", ILL, IMP, 2 },
+	{ "CLV", CLV, IMP, 2 }, { "LDA", LDA, ABY, 4 }, { "TSX", TSX, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "LDY", LDY, ABX, 4 }, { "LDA", LDA, ABX, 4 }, { "LDX", LDX, ABY, 4 }, { "???", ILL, IMP, 2 },
 
-/* 0xC0 */
-{ "CPY", CPY, IMM, 2 }, { "CMP", CMP, IDX, 6 }, { "NOP", NOP, IMM, 2 },     { "???", ILL, IMP, 2 },
-{ "CPY", CPY, ZP0, 3 },  { "CMP", CMP, ZP0, 3 },   { "DEC", DEC, ZP0, 5 },      { "???", ILL, IMP, 2 },
-{ "INY", INY, IMP, 2 }, { "CMP", CMP, IMM, 2 },  { "DEX", DEX, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "CPY", CPY, ABS, 4 }, { "CMP", CMP, ABS, 4 },  { "DEC", DEC, ABS, 6 },     { "???", ILL, IMP, 2 },
+	/* 0xC0 */
+	{ "CPY", CPY, IMM, 2 }, { "CMP", CMP, IDX, 6 }, { "NOP", NOP, IMM, 2 }, { "???", ILL, IMP, 2 },
+	{ "CPY", CPY, ZP0, 3 }, { "CMP", CMP, ZP0, 3 }, { "DEC", DEC, ZP0, 5 }, { "???", ILL, IMP, 2 },
+	{ "INY", INY, IMP, 2 }, { "CMP", CMP, IMM, 2 }, { "DEX", DEX, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "CPY", CPY, ABS, 4 }, { "CMP", CMP, ABS, 4 }, { "DEC", DEC, ABS, 6 }, { "???", ILL, IMP, 2 },
 
-/* 0xD0 */
-{ "BNE", BNE, REL, 2 }, { "CMP", CMP, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ZPX, 4 }, { "CMP", CMP, ZPX, 4 },  { "DEC", DEC, ZPX, 6 },     { "???", ILL, IMP, 2 },
-{ "CLD", CLD, IMP, 2 }, { "CMP", CMP, ABY, 4 }, { "NOP", NOP, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ABX, 4 },{ "CMP", CMP, ABX, 4 }, { "DEC", DEC, ABX, 7 },    { "???", ILL, IMP, 2 },
+	/* 0xD0 */
+	{ "BNE", BNE, REL, 2 }, { "CMP", CMP, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ZPX, 4 }, { "CMP", CMP, ZPX, 4 }, { "DEC", DEC, ZPX, 6 }, { "???", ILL, IMP, 2 },
+	{ "CLD", CLD, IMP, 2 }, { "CMP", CMP, ABY, 4 }, { "NOP", NOP, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ABX, 4 }, { "CMP", CMP, ABX, 4 }, { "DEC", DEC, ABX, 7 }, { "???", ILL, IMP, 2 },
 
-/* 0xE0 */
-{ "CPX", CPX, IMM, 2 }, { "SBC", SBC, IDX, 6 }, { "NOP", NOP, IMM, 2 },     { "???", ILL, IMP, 2 },
-{ "CPX", CPX, ZP0, 3 },  { "SBC", SBC, ZP0, 3 },   { "INC", INC, ZP0, 5 },      { "???", ILL, IMP, 2 },
-{ "INX", INX, IMP, 2 }, { "SBC", SBC, IMM, 2 },  { "NOP", NOP, IMP, 2 },     { "SBC", SBC, IMP, 2 },
-{ "CPX", CPX, ABS, 4 }, { "SBC", SBC, ABS, 4 },  { "INC", INC, ABS, 6 },     { "???", ILL, IMP, 2 },
+	/* 0xE0 */
+	{ "CPX", CPX, IMM, 2 }, { "SBC", SBC, IDX, 6 }, { "NOP", NOP, IMM, 2 }, { "???", ILL, IMP, 2 },
+	{ "CPX", CPX, ZP0, 3 }, { "SBC", SBC, ZP0, 3 }, { "INC", INC, ZP0, 5 }, { "???", ILL, IMP, 2 },
+	{ "INX", INX, IMP, 2 }, { "SBC", SBC, IMM, 2 }, { "NOP", NOP, IMP, 2 }, { "SBC", SBC, IMP, 2 },
+	{ "CPX", CPX, ABS, 4 }, { "SBC", SBC, ABS, 4 }, { "INC", INC, ABS, 6 }, { "???", ILL, IMP, 2 },
 
-/* 0xF0 */
-{ "BEQ", BEQ, REL, 2 }, { "SBC", SBC, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ZPX, 4 }, { "SBC", SBC, ZPX, 4 },  { "INC", INC, ZPX, 6 },     { "???", ILL, IMP, 2 },
-{ "SED", SED, IMP, 2 }, { "SBC", SBC, ABY, 4 }, { "NOP", NOP, IMP, 2 },     { "???", ILL, IMP, 2 },
-{ "NOP", NOP, ABX, 4 },{ "SBC", SBC, ABX, 4 }, { "INC", INC, ABX, 7 },    { "???", ILL, IMP, 2 }
+	/* 0xF0 */
+	{ "BEQ", BEQ, REL, 2 }, { "SBC", SBC, IDY, 5 }, { "???", ILL, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ZPX, 4 }, { "SBC", SBC, ZPX, 4 }, { "INC", INC, ZPX, 6 }, { "???", ILL, IMP, 2 },
+	{ "SED", SED, IMP, 2 }, { "SBC", SBC, ABY, 4 }, { "NOP", NOP, IMP, 2 }, { "???", ILL, IMP, 2 },
+	{ "NOP", NOP, ABX, 4 }, { "SBC", SBC, ABX, 4 }, { "INC", INC, ABX, 7 }, { "???", ILL, IMP, 2 }
 };
 
 void cpu_init(CPU *cpu)
@@ -109,7 +109,31 @@ void cpu_init(CPU *cpu)
 	cpu->pc = 0x0000;
 }
 
-void set_flag(CPU *cpu, enum StatusFlag flag, bool val)
+void cpu_push(CPU *cpu, uint8_t value) {
+    bus_write_byte(cpu->bus, STACK_OFFSET + cpu->sp, value);
+    cpu->sp--;
+}
+
+uint8_t cpu_read_byte(CPU *cpu, uint16_t address)
+{
+	return bus_read_byte(cpu->bus, address);
+}
+uint16_t cpu_read_word(CPU *cpu, uint16_t address)
+{
+	return bus_read_word(cpu->bus, address);
+}
+
+void cpu_write_byte(CPU *cpu, uint16_t address, uint8_t data)
+{
+	bus_write_byte(cpu->bus, address, data);
+}
+
+void cpu_write_word(CPU *cpu, uint16_t address, uint16_t data)
+{
+	bus_write_word(cpu->bus, address, data);
+}
+
+void set_flag(CPU *cpu, StatusFlag flag, bool val)
 {
 	switch (flag)
 	{
@@ -153,7 +177,7 @@ uint8_t cpu_fetch(CPU *cpu)
 {
     if (opcode_table[cpu->opcode].addrmode != IMP)
 	{
-        cpu->fetched = read_byte(cpu->addr_abs);
+        cpu->fetched = cpu_read_byte(cpu, cpu->addr_abs);
 	}
 
     return cpu->fetched;
@@ -161,7 +185,7 @@ uint8_t cpu_fetch(CPU *cpu)
 
 void cpu_step(CPU *cpu)
 {
-	uint8_t data = read_byte(cpu->pc++);	// Fetch
+	uint8_t data = cpu_read_byte(cpu, cpu->pc++);	// Fetch
 	Opcode opcode = opcode_table[data]; // Decode
 	uint8_t page_cycle = opcode.addrmode(cpu); // Execute
 	uint8_t cycles = opcode.operate(cpu); // Execute
@@ -255,7 +279,7 @@ uint8_t CPY(CPU *cpu)
 uint8_t DEC(CPU *cpu)
 { 
 	uint8_t new_val = (cpu_fetch(cpu) - 1);
-	write_byte(cpu->addr_abs, new_val);
+	cpu_write_byte(cpu, cpu->addr_abs, new_val);
 
 	set_zero_negative_flag(cpu, new_val);
 
@@ -292,7 +316,7 @@ uint8_t EOR(CPU *cpu){
 uint8_t INC(CPU *cpu)
 { 
 	uint8_t new_val = (cpu_fetch(cpu) + 1);
-	write_byte(cpu->addr_abs, new_val);
+	cpu_write_byte(cpu, cpu->addr_abs, new_val);
 
 	set_zero_negative_flag(cpu, new_val);
 
@@ -381,21 +405,21 @@ uint8_t SEI(CPU *cpu)
 
 uint8_t STA(CPU *cpu)
 { 
-	write_byte(cpu->pc, cpu->acc);
+	cpu_write_byte(cpu, cpu->pc, cpu->acc);
 
 	return 0x00; 
 }
 
 uint8_t STX(CPU *cpu)
 { 
-	write_byte(cpu->pc, cpu->x);
+	cpu_write_byte(cpu, cpu->pc, cpu->x);
 
 	return 0x00; 
 }
 
 uint8_t STY(CPU *cpu)
 { 
-	write_byte(cpu->pc, cpu->y);
+	cpu_write_byte(cpu, cpu->pc, cpu->y);
 
 	return 0x00;
 }
