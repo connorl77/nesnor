@@ -1,6 +1,6 @@
 CC      = gcc
 CFLAGS  = -Iinclude -g
-SRC     = src/main.c src/mem.c src/cpu.c src/bus.c
+SRC     = src/main.c src/mem.c src/cpu.c src/bus.c src/cartridge.c
 OBJ     = $(SRC:.c=.o)
 TARGET  = program
 

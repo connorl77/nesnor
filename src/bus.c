@@ -1,15 +1,23 @@
 #include "bus.h"
-#include "mem.h"
 #include <stdlib.h>
 
-bool bus_init(Bus *bus)
+bool bus_init(Bus *bus, Cartridge *cartridge)
 {
+	if (bus == NULL)
+	{
+		return false;
+	}
+
 	bus->mem = malloc(sizeof(Memory));
 
 	if (bus->mem->ram == NULL)
 	{
 		init_memory(bus->mem);
 	}
+
+	// should bus be responsible for initialising
+	// the cartridge, or the caller?
+	bus->cartridge = cartridge;
 
 	return true;
 }
@@ -24,16 +32,28 @@ void bus_free(Bus *bus)
 	free_memory(bus->mem);
 	bus->mem = NULL;
 
+	cartridge_free(bus->cartridge);
+	bus->cartridge = NULL;
+
 	free(bus);
 }
 
 uint8_t bus_read_byte(Bus *bus, uint16_t address)
 {
-	if (address >= 0x0000 && address <= 0x1FFF) {
+    if (address <= 0x1FFF) // RAM (0x0000 -> 0x1FFF)
+    {
         return read_byte(bus->mem, address & 0x07FF);
     } 
+    else if (address <= 0x3FFF) // PPU (0x2000 -> 0x3FFF)
+    {
+        return 0x00; 
+    } 
+    else if (address >= 0x4020)  // Cartridge (0x4020 -> 0xFFFF)
+    {
+        return cartridge_read(bus->cartridge, address);
+    }
 
-	return read_byte(bus->mem, address);
+    return 0x00; // APU/IO and unmapped space
 }
 
 uint16_t bus_read_word(Bus *bus, uint16_t address)
