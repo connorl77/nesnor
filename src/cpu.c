@@ -109,15 +109,21 @@ void cpu_init(CPU *cpu)
 	cpu->pc = 0x0000;
 }
 
-void cpu_push(CPU *cpu, uint8_t value) {
-    bus_write_byte(cpu->bus, STACK_OFFSET + cpu->sp, value);
+void stack_push(CPU *cpu, uint8_t value) {
+    cpu_write_byte(cpu, STACK_OFFSET + cpu->sp, value);
     cpu->sp--;
+}
+
+uint8_t stack_pop(CPU *cpu) {
+    cpu->sp++;
+    return cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
 }
 
 uint8_t cpu_read_byte(CPU *cpu, uint16_t address)
 {
 	return bus_read_byte(cpu->bus, address);
 }
+
 uint16_t cpu_read_word(CPU *cpu, uint16_t address)
 {
 	return bus_read_word(cpu->bus, address);
@@ -133,32 +139,55 @@ void cpu_write_word(CPU *cpu, uint16_t address, uint16_t data)
 	bus_write_word(cpu->bus, address, data);
 }
 
+bool get_flag(CPU *cpu, StatusFlag flag)
+{
+	switch (flag)
+	{
+		case CARRY:
+			return (cpu->sr & 0b00000001) > 0;
+		case ZERO:
+			return (cpu->sr & 0b00000010) > 0;
+		case INTERRUPT_DISABLE:
+			return (cpu->sr & 0b00000100) > 0;
+		case DECIMAL:
+			return (cpu->sr & 0b00001000) > 0;
+		case BREAK:
+			return (cpu->sr & 0b00010000) > 0;
+		case UNUSED:
+			return true;
+		case OVERFLOW:
+			return (cpu->sr & 0b01000000) > 0;
+		case NEGATIVE:
+			return (cpu->sr & 0b10000000) > 0;
+		};
+}
+
 void set_flag(CPU *cpu, StatusFlag flag, bool val)
 {
 	switch (flag)
 	{
 		case CARRY:
-			cpu->sr = val ? cpu-> sr | 0b00000001 : cpu->sr & 0b11111110;
+			cpu->sr = val ? cpu->sr | 0b00000001 : cpu->sr & 0b11111110;
 			break;
 		case ZERO:
-			cpu->sr = val ? cpu-> sr | 0b00000010 : cpu->sr & 0b11111101;
+			cpu->sr = val ? cpu->sr | 0b00000010 : cpu->sr & 0b11111101;
 			break;
 		case INTERRUPT_DISABLE:
-			cpu->sr = val ? cpu-> sr | 0b00000100 : cpu->sr & 0b11111011;
+			cpu->sr = val ? cpu->sr | 0b00000100 : cpu->sr & 0b11111011;
 			break;
 		case DECIMAL:
-			cpu->sr = val ? cpu-> sr | 0b00001000 : cpu->sr & 0b11110111;
+			cpu->sr = val ? cpu->sr | 0b00001000 : cpu->sr & 0b11110111;
 			break;
-		case B:
-			cpu->sr = val ? cpu-> sr | 0b00010000 : cpu->sr & 0b11101111;
+		case BREAK:
+			cpu->sr = val ? cpu->sr | 0b00010000 : cpu->sr & 0b11101111;
 			break;
 		case UNUSED:
 			break;
 		case OVERFLOW:
-			cpu->sr = val ? cpu-> sr | 0b01000000 : cpu->sr & 0b10111111;
+			cpu->sr = val ? cpu->sr | 0b01000000 : cpu->sr & 0b10111111;
 			break;
 		case NEGATIVE:
-			cpu->sr = val ? cpu-> sr | 0b10000000 : cpu->sr & 0b01111111;
+			cpu->sr = val ? cpu->sr | 0b10000000 : cpu->sr & 0b01111111;
 			break;
 		};
 }
@@ -193,7 +222,26 @@ void cpu_step(CPU *cpu)
 	cpu->cycles += (page_cycle + cycles);
 }
 
-uint8_t ADC(CPU *cpu){ return 0x00; }
+uint8_t ADC(CPU *cpu)
+{ 
+	uint8_t fetched_data = cpu_fetch(cpu);
+	uint16_t temp_result = cpu->acc + fetched_data + get_flag(cpu, CARRY);
+
+	if (temp_result > 0xFF)
+	{
+		set_flag(cpu, CARRY, true);
+	}
+
+	set_zero_negative_flag(cpu, temp_result); // likely wrong.
+	~(cpu->acc ^ fetched_data) & (cpu->acc ^ temp_result) & 0b10000000 
+		? (cpu->sr |= 0b01000000) 
+		: (cpu->sr &= 0b10111111);
+
+	cpu->acc = temp_result & 0xFF;
+
+	return 0x00; 
+}
+
 uint8_t AND(CPU *cpu)
 { 
 	cpu->acc &= cpu_fetch(cpu);
@@ -216,16 +264,126 @@ uint8_t ASL(CPU *cpu)
 	return 0x00; 
 }
 
-uint8_t BCC(CPU *cpu){ return 0x00; }
-uint8_t BCS(CPU *cpu){ return 0x00; }
-uint8_t BEQ(CPU *cpu){ return 0x00; }
-uint8_t BIT(CPU *cpu){ return 0x00; }
-uint8_t BMI(CPU *cpu){ return 0x00; }
-uint8_t BNE(CPU *cpu){ return 0x00; }
-uint8_t BPL(CPU *cpu){ return 0x00; }
-uint8_t BRK(CPU *cpu){ return 0x00; }
-uint8_t BVC(CPU *cpu){ return 0x00; }
-uint8_t BVS(CPU *cpu){ return 0x00; }
+uint8_t BCC(CPU *cpu)
+{ 
+	if (!get_flag(cpu, CARRY))
+	{
+		cpu->addr_abs = cpu->addr_rel + cpu->pc;
+		cpu->pc = cpu->addr_abs;
+	}
+
+	return 0x00; 
+}
+
+uint8_t BCS(CPU *cpu)
+{ 
+	if (get_flag(cpu, CARRY))
+	{
+		cpu->addr_abs = cpu->addr_rel + cpu->pc;
+		cpu->pc = cpu->addr_abs;
+	}
+
+	return 0x00; 
+}
+
+uint8_t BEQ(CPU *cpu)
+{ 
+	if (get_flag(cpu, ZERO))
+	{
+		cpu->addr_abs = cpu->addr_rel + cpu->pc;
+		cpu->pc = cpu->addr_abs;
+	}
+
+	return 0x00; 
+}
+
+uint8_t BIT(CPU *cpu)
+{ 
+	uint8_t data = cpu_fetch(cpu);
+
+	set_flag(cpu, ZERO, (cpu->acc & data) == 0);
+
+	(data & 0b10000000) > 0 
+		? (cpu->sr |= 0b10000000) 
+		: (cpu->sr &= 0b01111111);
+
+	(data & 0b01000000) > 0 
+		? (cpu->sr |= 0b01000000) 
+		: (cpu->sr &= 0b10111111);
+
+	return 0x00; 
+}
+
+uint8_t BMI(CPU *cpu)
+{ 
+	if (get_flag(cpu, NEGATIVE))
+	{
+		cpu->addr_abs = cpu->addr_rel + cpu->pc;
+		cpu->pc = cpu->addr_abs;
+	}
+
+	return 0x00; 
+}
+
+uint8_t BNE(CPU *cpu)
+{ 
+	if (!get_flag(cpu, ZERO))
+	{
+		cpu->addr_abs = cpu->addr_rel + cpu->pc;
+		cpu->pc = cpu->addr_abs;
+	}
+
+	return 0x00; 
+}
+
+uint8_t BPL(CPU *cpu)
+{ 
+	if (!get_flag(cpu, NEGATIVE))
+	{
+		cpu->addr_abs = cpu->addr_rel + cpu->pc;
+		cpu->pc = cpu->addr_abs;
+	}
+
+	return 0x00; 
+}
+
+uint8_t BRK(CPU *cpu)
+{ 
+	uint8_t hi = cpu->pc >> 8;
+	uint8_t lo = cpu->pc & 0xFF;
+
+	stack_push(cpu, lo);
+	stack_push(cpu, hi);
+	stack_push(cpu, cpu->sr);
+
+	cpu->pc = 0xFFFE;
+
+	set_flag(cpu, BREAK, true);
+
+	return 0x00; 
+}
+
+uint8_t BVC(CPU *cpu)
+{ 
+	if (!get_flag(cpu, OVERFLOW))
+	{
+		cpu->addr_abs = cpu->addr_rel + cpu->pc;
+		cpu->pc = cpu->addr_abs;
+	}
+
+	return 0x00; 
+}
+
+uint8_t BVS(CPU *cpu)
+{ 
+	if (get_flag(cpu, OVERFLOW))
+	{
+		cpu->addr_abs = cpu->addr_rel + cpu->pc;
+		cpu->pc = cpu->addr_abs;
+	}
+
+	return 0x00; 
+}
 
 uint8_t CLC(CPU *cpu)
 { 
@@ -328,7 +486,6 @@ uint8_t EOR(CPU *cpu){
 	set_zero_negative_flag(cpu, cpu->acc);
 
 	return 0x00; 
-
 }
 
 uint8_t INC(CPU *cpu)
@@ -379,11 +536,8 @@ uint8_t JSR(CPU *cpu)
 	uint8_t hi = cpu->pc >> 8;
 	uint8_t lo = cpu->pc & 0xFF;
 
-	cpu_write_byte(cpu, STACK_OFFSET + cpu->sp, hi);
-	cpu->sp--;
-
-	cpu_write_byte(cpu, STACK_OFFSET + cpu->sp, lo);
-	cpu->sp--;
+	stack_push(cpu, hi);
+	stack_push(cpu, lo);
 
 	return 0x00; 
 }
@@ -435,18 +589,14 @@ uint8_t ORA(CPU *cpu)
 
 uint8_t PHA(CPU *cpu)
 { 
-	cpu_write_byte(cpu, STACK_OFFSET + cpu->sp, cpu->acc);
-
-	cpu->sp--;
+	stack_push(cpu, cpu->acc);
 
 	return 0x00; 
 }
 
 uint8_t PHP(CPU *cpu)
 { 
-	cpu_write_byte(cpu, STACK_OFFSET + cpu->sp, (cpu->sr & 0b11001111) | 0b00110000);
-
-	cpu->sp--;
+	stack_push(cpu, (cpu->sr & 0b11001111) | 0b00110000);
 
 	return 0x00; 
 }
@@ -455,16 +605,14 @@ uint8_t PLA(CPU *cpu)
 { 
 	cpu->sp++;
 
-	cpu->acc = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
+	cpu->acc = stack_pop(cpu);
 
 	return 0x00; 
 }
 
 uint8_t PLP(CPU *cpu)
 {
-	cpu->sp++;
-
-	uint8_t pulled_sr = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
+	uint8_t pulled_sr = stack_pop(cpu);
 
     cpu->sr = (pulled_sr & 0x110011111) | 0b00100000;
 
@@ -496,16 +644,12 @@ uint8_t ROR(CPU *cpu)
 
 uint8_t RTI(CPU *cpu) 
 {
-    cpu->sp++;
-    uint8_t pulled_sr = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
+    uint8_t pulled_sr = stack_pop(cpu);
     
     cpu->sr = (pulled_sr & 0x110011111) | 0b00100000;
 
-    cpu->sp++;
-    uint8_t pc_lo = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
-
-    cpu->sp++;
-    uint8_t pc_hi = cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
+    uint8_t pc_lo = stack_pop(cpu);
+    uint8_t pc_hi = stack_pop(cpu);
 
     cpu->pc = ((pc_hi << 8) | pc_lo);
 
@@ -514,14 +658,17 @@ uint8_t RTI(CPU *cpu)
 
 uint8_t RTS(CPU *cpu)
 { 
-	cpu->pc = cpu_read_word(cpu, STACK_OFFSET + cpu->sp);
-	cpu->pc++;
+	cpu->pc = stack_pop(cpu);
 
 	return 0x00; 
 }
 
 uint8_t SBC(CPU *cpu)
 {
+	cpu->fetched = ~(cpu_fetch(cpu));
+
+	ADC(cpu);
+	
 	return 0x00; 
 }
 
@@ -644,16 +791,39 @@ uint8_t ACC(CPU *cpu)
 
 uint8_t IND(CPU *cpu) 
 {
+	uint8_t lo_ptr = cpu_fetch(cpu);
+	uint8_t hi_ptr = cpu_fetch(cpu);
+
+	uint16_t ptr = (hi_ptr << 8) | lo_ptr;
+
+	cpu->addr_abs = lo_ptr == 0xFF 
+		? (cpu_read_byte(cpu, ptr & 0xFF00) << 8) | cpu_read_byte(cpu, ptr)
+		: (cpu_read_byte(cpu, ptr + 1) << 8) | cpu_read_byte(cpu, ptr);
+
 	return 0x00;
 }
 
 uint8_t IDY(CPU *cpu) 
 {
+	uint8_t tmp = cpu_fetch(cpu);
+
+	uint8_t lo = cpu_read_byte(cpu, (tmp + cpu->y) & 0xFF);
+	uint8_t hi = cpu_read_byte(cpu, (tmp + cpu->y + 1) & 0xFF);
+
+	cpu->addr_abs = (hi << 8) | lo;
+
 	return 0x00;
 }
 
 uint8_t IDX(CPU *cpu) 
 {
+	uint8_t tmp = cpu_fetch(cpu);
+
+	uint8_t lo = cpu_read_byte(cpu, (tmp + cpu->x) & 0xFF);
+	uint8_t hi = cpu_read_byte(cpu, (tmp + cpu->x + 1) & 0xFF);
+
+	cpu->addr_abs = (hi << 8) | lo;
+
 	return 0x00;
 }
 
@@ -666,21 +836,29 @@ uint8_t IMM(CPU *cpu)
 
 uint8_t IMP(CPU *cpu)
 {
+	cpu->fetched = cpu->acc;
+
 	return 0x00;
 }
 
 uint8_t ZP0(CPU *cpu)
 {
+	cpu->addr_abs = cpu_fetch(cpu) & 0xFF;
+
 	return 0x00;
 }
 
 uint8_t ZPY(CPU *cpu)
 {
+	cpu->addr_abs = (cpu_fetch(cpu) + cpu->y) & 0xFF;
+
 	return 0x00;
 }
 
 uint8_t ZPX(CPU *cpu)
 {
+	cpu->addr_abs = (cpu_fetch(cpu) + cpu->x) & 0xFF;
+
 	return 0x00;
 }
 
@@ -694,16 +872,31 @@ uint8_t ABS(CPU *cpu)
 
 uint8_t ABX(CPU *cpu)
 {
+	uint8_t lo = cpu_fetch(cpu);
+	uint8_t hi = cpu_fetch(cpu);
+
+	cpu->addr_abs = ((hi << 8) | lo) + cpu->x;
 
 	return 0x00;
 }
 
 uint8_t ABY(CPU *cpu)
 {
+	uint8_t lo = cpu_fetch(cpu);
+	uint8_t hi = cpu_fetch(cpu);
+
+	cpu->addr_abs = ((hi << 8) | lo) + cpu->y;
+
 	return 0x00;
 }
 
 uint8_t REL(CPU *cpu)
 {
+	cpu->addr_rel = cpu_fetch(cpu);
+
+	if (cpu->addr_rel & 0b10000000) {
+		cpu->addr_rel |= 0xFF00;
+	}
+
 	return 0x00;
 }

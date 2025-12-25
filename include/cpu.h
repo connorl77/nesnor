@@ -44,7 +44,7 @@ typedef enum
 	ZERO = 1,
 	INTERRUPT_DISABLE = 2,
 	DECIMAL = 3,
-	B = 4,
+	BREAK = 4,
 	UNUSED = 5,
 	OVERFLOW = 6,
 	NEGATIVE = 7
@@ -52,7 +52,9 @@ typedef enum
 
 void cpu_init(CPU *cpu);
 void cpu_step(CPU *cpu);
-void cpu_push(CPU *cpu, uint8_t val);
+
+void stack_push(CPU *cpu, uint8_t val);
+uint8_t stack_pop(CPU *cpu);
 
 uint8_t cpu_read_byte(CPU *cpu, uint16_t address);
 uint16_t cpu_read_word(CPU *cpu, uint16_t address);
@@ -60,6 +62,7 @@ uint16_t cpu_read_word(CPU *cpu, uint16_t address);
 void cpu_write_byte(CPU *cpu, uint16_t address, uint8_t data);
 void cpu_write_word(CPU *cpu, uint16_t address, uint16_t data);
 
+bool get_flag(CPU *cpu, StatusFlag flag);
 void set_flag(CPU *cpu, StatusFlag bit, bool val);
 void set_zero_negative_flag(CPU *cpu, uint8_t val);
 
