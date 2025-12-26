@@ -106,7 +106,15 @@ void cpu_init(CPU *cpu)
 	cpu->y = 0x00;
 	cpu->sp = 0xFF;
 	cpu->sr = 0b00100000;
-	cpu->pc = 0x0000;
+
+	uint8_t lo = cpu_read_byte(cpu, 0xFFFC);
+	uint8_t hi = cpu_read_byte(cpu, 0xFFFD);
+
+	cpu->pc = (hi << 8) | lo;
+
+#ifdef CPU_TEST_MODE
+	cpu->pc = 0x0400;
+#endif
 }
 
 void stack_push(CPU *cpu, uint8_t value) {
