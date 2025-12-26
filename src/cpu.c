@@ -111,10 +111,6 @@ void cpu_init(CPU *cpu)
 	uint8_t hi = cpu_read_byte(cpu, 0xFFFD);
 
 	cpu->pc = (hi << 8) | lo;
-
-#ifdef CPU_TEST_MODE
-	cpu->pc = 0x0400;
-#endif
 }
 
 void stack_push(CPU *cpu, uint8_t value) {
@@ -222,12 +218,15 @@ uint8_t cpu_fetch(CPU *cpu)
 
 void cpu_step(CPU *cpu)
 {
-	uint8_t data = cpu_read_byte(cpu, cpu->pc++);	// Fetch
-	Opcode opcode = opcode_table[data]; // Decode
-	uint8_t page_cycle = opcode.addrmode(cpu); // Execute
-	uint8_t cycles = opcode.operate(cpu); // Execute
+    cpu->opcode = cpu_read_byte(cpu, cpu->pc++);
+    Opcode *op = &opcode_table[cpu->opcode];
 
-	cpu->cycles += (page_cycle + cycles);
+    cpu->cycles = op->cycles;
+
+    uint8_t extra1 = op->addrmode(cpu);
+    uint8_t extra2 = op->operate(cpu);
+
+    cpu->cycles += (extra1 & extra2);
 }
 
 uint8_t ADC(CPU *cpu)
@@ -528,13 +527,7 @@ uint8_t INY(CPU *cpu)
 
 uint8_t JMP(CPU *cpu)
 { 
-	uint8_t lo = cpu_fetch(cpu);
-	cpu->pc++;
-
-	uint8_t hi = cpu_fetch(cpu);
-	cpu->pc++; 
-
-	cpu->pc = (hi << 8) | lo;
+	cpu->pc = cpu->addr_abs;
 
 	return 0x00; 
 }
@@ -872,8 +865,9 @@ uint8_t ZPX(CPU *cpu)
 
 uint8_t ABS(CPU *cpu)
 {
-	cpu->addr_abs = cpu->fetched;
-	cpu->pc++;
+	uint8_t lo = cpu_read_byte(cpu, cpu->pc++);
+    uint8_t hi = cpu_read_byte(cpu, cpu->pc++);
+    cpu->addr_abs = (hi << 8) | lo;
 
 	return 0x00;
 }

@@ -1,5 +1,6 @@
 #include "bus.h"
 #include "mem.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -45,20 +46,16 @@ bool load_klaus_test(Bus *bus, const char *path)
 
     if (!cartridge_init(path, buffer, &size))
 	{
+		printf("Cartridge failed to intiialise.");
         return false;
 	}
 
-    const uint16_t LOAD_ADDR = 0x0400;
-
-    if (LOAD_ADDR + size > 0x10000)
+    if (size > 0x10000)
 	{
         return false;
 	}
 
-    memcpy(&bus->mem[LOAD_ADDR], buffer, size);
-
-    bus->mem[0xFFFC] = LOAD_ADDR & 0xFF;
-    bus->mem[0xFFFD] = LOAD_ADDR >> 8;
+    memcpy(&bus->mem, buffer, size);
 
     return true;
 }

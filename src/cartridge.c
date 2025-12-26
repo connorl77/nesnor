@@ -7,6 +7,7 @@ bool cartridge_init(const char *file_path, uint8_t *buff, size_t *out_size)
 	FILE *f = fopen(file_path, "rb");
     if (!f) 
 	{
+		printf("Failed to load file at %s.", file_path);
 		return false;
 	}
 
@@ -16,6 +17,7 @@ bool cartridge_init(const char *file_path, uint8_t *buff, size_t *out_size)
 
     if (size <= 0 || size > 0x10000) {
         fclose(f);
+		printf("File at %s is too large for memory.", file_path);
         return false;
     }
 

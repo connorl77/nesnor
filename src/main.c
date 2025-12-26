@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <stdlib.h>
 #include <unistd.h>
 
 int main(void)
@@ -31,14 +32,19 @@ int main(void)
 	//cpu_init(&cpu);
 
 #ifdef CPU_TEST_MODE
-	load_klaus_test(&bus, "./6502_functional_test.bin");
+	
+	if (!load_klaus_test(&bus, "./6502_functional_test.bin"))
+	{
+		printf("Failed to load test binary.");
+		return 1;
+	}
 #endif
 
 	cpu_init(&cpu);
 
-	while (cpu.opcode == 0)
+	while (true)
 	{
-		printf("Result: %i\n", cpu.pc);
+		printf("Result: 0x%X\n", cpu.pc);
 		sleep(1);
 		cpu_step(&cpu);
 	}
