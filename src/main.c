@@ -3,8 +3,8 @@
 #include "cpu.h"
 
 #include <stdint.h>
-#include <stdio.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -29,8 +29,6 @@ int main(void)
 
 	cpu.bus = &bus;
 
-	//cpu_init(&cpu);
-
 #ifdef CPU_TEST_MODE
 	
 	if (!load_klaus_test(&bus, "./6502_functional_test.bin"))
@@ -44,12 +42,9 @@ int main(void)
 
 	while (true)
 	{
-		printf("Result: 0x%X\n", cpu.pc);
-		sleep(1);
 		cpu_step(&cpu);
+		//usleep(500);
 	}
-
-	printf("%i", cartridge_read(&cartridge, 0xFFFC));
 
 	return 0;
 }

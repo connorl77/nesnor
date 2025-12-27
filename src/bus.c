@@ -57,6 +57,9 @@ bool load_klaus_test(Bus *bus, const char *path)
 
     memcpy(&bus->mem, buffer, size);
 
+	bus->mem[0xFFFC] = 0x00;
+	bus->mem[0xFFFD] = 0x04;
+
     return true;
 }
 #endif

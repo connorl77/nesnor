@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include <stdio.h>
 
 Opcode opcode_table[256] = 
 {
@@ -123,25 +124,11 @@ uint8_t stack_pop(CPU *cpu) {
     return cpu_read_byte(cpu, STACK_OFFSET + cpu->sp);
 }
 
-uint8_t cpu_read_byte(CPU *cpu, uint16_t address)
-{
-	return bus_read_byte(cpu->bus, address);
-}
+uint8_t cpu_read_byte(CPU *cpu, uint16_t address) { return bus_read_byte(cpu->bus, address); }
+uint16_t cpu_read_word(CPU *cpu, uint16_t address) { return bus_read_word(cpu->bus, address); }
 
-uint16_t cpu_read_word(CPU *cpu, uint16_t address)
-{
-	return bus_read_word(cpu->bus, address);
-}
-
-void cpu_write_byte(CPU *cpu, uint16_t address, uint8_t data)
-{
-	bus_write_byte(cpu->bus, address, data);
-}
-
-void cpu_write_word(CPU *cpu, uint16_t address, uint16_t data)
-{
-	bus_write_word(cpu->bus, address, data);
-}
+void cpu_write_byte(CPU *cpu, uint16_t address, uint8_t data) { bus_write_byte(cpu->bus, address, data); }
+void cpu_write_word(CPU *cpu, uint16_t address, uint16_t data) { bus_write_word(cpu->bus, address, data); }
 
 bool get_flag(CPU *cpu, StatusFlag flag)
 {
@@ -196,22 +183,14 @@ void set_flag(CPU *cpu, StatusFlag flag, bool val)
 		};
 }
 
-void set_zero_negative_flag(CPU *cpu, uint8_t val)
-{
-	if (val == 0)
-	{
-		set_flag(cpu, ZERO, true);
-	}
-
-	set_flag(cpu, NEGATIVE, val & 0b10000000);
-}
-
 uint8_t cpu_fetch(CPU *cpu)
 {
     if (opcode_table[cpu->opcode].addrmode != IMP)
 	{
         cpu->fetched = cpu_read_byte(cpu, cpu->addr_abs);
 	}
+
+	printf("--> Fetched 0x%X\n", cpu->fetched);
 
     return cpu->fetched;
 }
@@ -221,12 +200,24 @@ void cpu_step(CPU *cpu)
     cpu->opcode = cpu_read_byte(cpu, cpu->pc++);
     Opcode *op = &opcode_table[cpu->opcode];
 
+	printf("Opcode: 0x%X (%s), PC=0x%X, SP=0x%X, SR=0x%b, ACC=0x%X, X=%i, Y=%i.\n", 
+		cpu->opcode, 
+		op->name,
+		cpu->pc - 1,
+		cpu->sp,
+		cpu->sr,
+		cpu->acc,
+		cpu->x,
+		cpu->y
+	);
+
     cpu->cycles = op->cycles;
 
     uint8_t extra1 = op->addrmode(cpu);
     uint8_t extra2 = op->operate(cpu);
 
     cpu->cycles += (extra1 & extra2);
+	
 }
 
 uint8_t ADC(CPU *cpu)
@@ -239,7 +230,9 @@ uint8_t ADC(CPU *cpu)
 		set_flag(cpu, CARRY, true);
 	}
 
-	set_zero_negative_flag(cpu, temp_result); // likely wrong.
+	set_flag(cpu, ZERO, temp_result == 0);
+	set_flag(cpu, NEGATIVE, temp_result & 0b10000000);
+
 	~(cpu->acc ^ fetched_data) & (cpu->acc ^ temp_result) & 0b10000000 
 		? (cpu->sr |= 0b01000000) 
 		: (cpu->sr &= 0b10111111);
@@ -252,9 +245,9 @@ uint8_t ADC(CPU *cpu)
 uint8_t AND(CPU *cpu)
 { 
 	cpu->acc &= cpu_fetch(cpu);
-	cpu->pc++;
 
-	set_zero_negative_flag(cpu, cpu->acc);
+	set_flag(cpu, ZERO, cpu->acc == 0);
+	set_flag(cpu, NEGATIVE, cpu->acc & 0b10000000);
 
 	return 0x00; 
 }
@@ -275,8 +268,10 @@ uint8_t BCC(CPU *cpu)
 { 
 	if (!get_flag(cpu, CARRY))
 	{
-		cpu->addr_abs = cpu->addr_rel + cpu->pc;
-		cpu->pc = cpu->addr_abs;
+		int16_t offset = (int8_t)cpu->addr_rel;
+		uint16_t new_pc = cpu->pc + offset;
+
+		cpu->pc = new_pc;
 	}
 
 	return 0x00; 
@@ -286,8 +281,10 @@ uint8_t BCS(CPU *cpu)
 { 
 	if (get_flag(cpu, CARRY))
 	{
-		cpu->addr_abs = cpu->addr_rel + cpu->pc;
-		cpu->pc = cpu->addr_abs;
+		int16_t offset = (int8_t)cpu->addr_rel;
+		uint16_t new_pc = cpu->pc + offset;
+
+		cpu->pc = new_pc;
 	}
 
 	return 0x00; 
@@ -297,8 +294,10 @@ uint8_t BEQ(CPU *cpu)
 { 
 	if (get_flag(cpu, ZERO))
 	{
-		cpu->addr_abs = cpu->addr_rel + cpu->pc;
-		cpu->pc = cpu->addr_abs;
+		int16_t offset = (int8_t)cpu->addr_rel;
+		uint16_t new_pc = cpu->pc + offset;
+
+		cpu->pc = new_pc;
 	}
 
 	return 0x00; 
@@ -309,6 +308,7 @@ uint8_t BIT(CPU *cpu)
 	uint8_t data = cpu_fetch(cpu);
 
 	set_flag(cpu, ZERO, (cpu->acc & data) == 0);
+	set_flag(cpu, NEGATIVE, (cpu->acc & data) & 0b10000000);
 
 	(data & 0b10000000) > 0 
 		? (cpu->sr |= 0b10000000) 
@@ -325,8 +325,10 @@ uint8_t BMI(CPU *cpu)
 { 
 	if (get_flag(cpu, NEGATIVE))
 	{
-		cpu->addr_abs = cpu->addr_rel + cpu->pc;
-		cpu->pc = cpu->addr_abs;
+		int16_t offset = (int8_t)cpu->addr_rel;
+		uint16_t new_pc = cpu->pc + offset;
+
+		cpu->pc = new_pc;
 	}
 
 	return 0x00; 
@@ -336,8 +338,10 @@ uint8_t BNE(CPU *cpu)
 { 
 	if (!get_flag(cpu, ZERO))
 	{
-		cpu->addr_abs = cpu->addr_rel + cpu->pc;
-		cpu->pc = cpu->addr_abs;
+		int16_t offset = (int8_t)cpu->addr_rel;
+		uint16_t new_pc = cpu->pc + offset;
+
+		cpu->pc = new_pc;
 	}
 
 	return 0x00; 
@@ -347,8 +351,10 @@ uint8_t BPL(CPU *cpu)
 { 
 	if (!get_flag(cpu, NEGATIVE))
 	{
-		cpu->addr_abs = cpu->addr_rel + cpu->pc;
-		cpu->pc = cpu->addr_abs;
+		int16_t offset = (int8_t)cpu->addr_rel;
+		uint16_t new_pc = cpu->pc + offset;
+
+		cpu->pc = new_pc;
 	}
 
 	return 0x00; 
@@ -374,8 +380,10 @@ uint8_t BVC(CPU *cpu)
 { 
 	if (!get_flag(cpu, OVERFLOW))
 	{
-		cpu->addr_abs = cpu->addr_rel + cpu->pc;
-		cpu->pc = cpu->addr_abs;
+		int16_t offset = (int8_t)cpu->addr_rel;
+		uint16_t new_pc = cpu->pc + offset;
+
+		cpu->pc = new_pc;
 	}
 
 	return 0x00; 
@@ -385,8 +393,10 @@ uint8_t BVS(CPU *cpu)
 { 
 	if (get_flag(cpu, OVERFLOW))
 	{
-		cpu->addr_abs = cpu->addr_rel + cpu->pc;
-		cpu->pc = cpu->addr_abs;
+		int16_t offset = (int8_t)cpu->addr_rel;
+		uint16_t new_pc = cpu->pc + offset;
+
+		cpu->pc = new_pc;
 	}
 
 	return 0x00; 
@@ -423,11 +433,12 @@ uint8_t CLV(CPU *cpu)
 uint8_t CMP(CPU *cpu)
 { 
 	uint8_t data = cpu_fetch(cpu);
-	cpu->pc++;
+
+	uint16_t temp = (uint16_t)cpu->acc - (uint16_t)data;
 
 	set_flag(cpu, CARRY, cpu->acc >= data);
-	set_flag(cpu, ZERO, cpu->acc == data);
-	set_flag(cpu, NEGATIVE, cpu->acc & 0b10000000);
+	set_flag(cpu, ZERO, (temp & 0xFF) == 0);
+	set_flag(cpu, NEGATIVE, temp & 0b10000000);
 
 	return 0x00; 
 }
@@ -435,11 +446,12 @@ uint8_t CMP(CPU *cpu)
 uint8_t CPX(CPU *cpu)
 { 
 	uint8_t data = cpu_fetch(cpu);
-	cpu->pc++;
+
+	uint16_t temp = (uint16_t)cpu->x - (uint16_t)data;
 
 	set_flag(cpu, CARRY, cpu->x >= data);
-	set_flag(cpu, ZERO, cpu->x == data);
-	set_flag(cpu, NEGATIVE, cpu->x & 0b10000000);
+	set_flag(cpu, ZERO, (temp & 0xFF) == 0);
+	set_flag(cpu, NEGATIVE, temp & 0b10000000);
 
 	return 0x00; 
 }
@@ -447,11 +459,12 @@ uint8_t CPX(CPU *cpu)
 uint8_t CPY(CPU *cpu)
 { 
 	uint8_t data = cpu_fetch(cpu);
-	cpu->pc++;
+
+	uint16_t temp = (uint16_t)cpu->y - (uint16_t)data;
 
 	set_flag(cpu, CARRY, cpu->y >= data);
-	set_flag(cpu, ZERO, cpu->y == data);
-	set_flag(cpu, NEGATIVE, cpu->y & 0b10000000);
+	set_flag(cpu, ZERO, (temp & 0xFF) == 0);
+	set_flag(cpu, NEGATIVE, temp & 0b10000000);
 
 	return 0x00; 
 }
@@ -459,11 +472,11 @@ uint8_t CPY(CPU *cpu)
 uint8_t DEC(CPU *cpu)
 { 
 	uint8_t new_val = (cpu_fetch(cpu) - 1);
-	cpu->pc++;
 
 	cpu_write_byte(cpu, cpu->addr_abs, new_val);
 
-	set_zero_negative_flag(cpu, new_val);
+	set_flag(cpu, ZERO, new_val == 0);
+	set_flag(cpu, NEGATIVE, new_val & 0b10000000);
 
 	return 0x00; 
 }
@@ -472,7 +485,8 @@ uint8_t DEX(CPU *cpu)
 {
 	--cpu->x;
 
-	set_zero_negative_flag(cpu, cpu->x);
+	set_flag(cpu, ZERO, cpu->x == 0);
+	set_flag(cpu, NEGATIVE, cpu->x & 0b10000000);
 
 	return 0x00; 
 }
@@ -481,16 +495,18 @@ uint8_t DEY(CPU *cpu)
 { 
 	--cpu->y;
 
-	set_zero_negative_flag(cpu, cpu->y);
+	set_flag(cpu, ZERO, cpu->y == 0);
+	set_flag(cpu, NEGATIVE, cpu->y & 0b10000000);
 
 	return 0x00; 
 }
 
-uint8_t EOR(CPU *cpu){ 
+uint8_t EOR(CPU *cpu)
+{ 
 	cpu->acc ^= cpu_fetch(cpu);
-	cpu->pc++;
 
-	set_zero_negative_flag(cpu, cpu->acc);
+	set_flag(cpu, ZERO, cpu->acc == 0);
+	set_flag(cpu, NEGATIVE, cpu->acc & 0b10000000);
 
 	return 0x00; 
 }
@@ -498,11 +514,11 @@ uint8_t EOR(CPU *cpu){
 uint8_t INC(CPU *cpu)
 { 
 	uint8_t new_val = (cpu_fetch(cpu) + 1);
-	cpu->pc++;
 
 	cpu_write_byte(cpu, cpu->addr_abs, new_val);
 
-	set_zero_negative_flag(cpu, new_val);
+	set_flag(cpu, ZERO, new_val == 0);
+	set_flag(cpu, NEGATIVE, new_val & 0b10000000);
 
 	return 0x00; 
 }
@@ -511,7 +527,8 @@ uint8_t INX(CPU *cpu)
 { 
 	++cpu->x;
 
-	set_zero_negative_flag(cpu, cpu->x);
+	set_flag(cpu, ZERO, cpu->x == 0);
+	set_flag(cpu, NEGATIVE, cpu->x & 0b10000000);
 
 	return 0x00; 
 }
@@ -520,7 +537,8 @@ uint8_t INY(CPU *cpu)
 { 
 	++cpu->y;
 
-	set_zero_negative_flag(cpu, cpu->y);
+	set_flag(cpu, ZERO, cpu->y == 0);
+	set_flag(cpu, NEGATIVE, cpu->y & 0b10000000);
 
 	return 0x00; 
 }
@@ -547,12 +565,18 @@ uint8_t LDA(CPU *cpu)
 { 
 	cpu->acc = cpu_fetch(cpu);
 
+	set_flag(cpu, ZERO, cpu->acc == 0);
+	set_flag(cpu, NEGATIVE, cpu->acc & 0b10000000);
+
 	return 0x00; 
 }
 
 uint8_t LDX(CPU *cpu)
 { 
 	cpu->x = cpu_fetch(cpu);
+
+	set_flag(cpu, ZERO, cpu->x == 0);
+	set_flag(cpu, NEGATIVE, cpu->x & 0b10000000);
 
 	return 0x00; 
 }
@@ -561,15 +585,21 @@ uint8_t LDY(CPU *cpu)
 { 
 	cpu->y = cpu_fetch(cpu);
 
+	set_flag(cpu, ZERO, cpu->y == 0);
+	set_flag(cpu, NEGATIVE, cpu->y & 0b10000000);
+
 	return 0x00; 
 }
 
 uint8_t LSR(CPU *cpu)
 { 
+	set_flag(cpu, CARRY, cpu->pc & 0b00000001);
+
 	uint8_t new_data = (cpu_read_byte(cpu, cpu->pc) >> 1);
 	cpu_write_byte(cpu, cpu->pc, new_data);
 
 	set_flag(cpu, ZERO, new_data == 0);
+	set_flag(cpu, NEGATIVE, new_data & 0b10000000);
 
 	cpu->pc++;
 
@@ -585,6 +615,9 @@ uint8_t ORA(CPU *cpu)
 { 
 	cpu->acc |= cpu_fetch(cpu);
 
+	set_flag(cpu, ZERO, cpu->acc == 0);
+	set_flag(cpu, NEGATIVE, cpu->acc & 0b10000000);
+
 	return 0x00; 
 }
 
@@ -597,27 +630,27 @@ uint8_t PHA(CPU *cpu)
 
 uint8_t PHP(CPU *cpu)
 { 
-	stack_push(cpu, (cpu->sr & 0b11001111) | 0b00110000);
+	stack_push(cpu, (cpu->sr | 0b01100000));
 
 	return 0x00; 
 }
 
 uint8_t PLA(CPU *cpu)
 { 
-	cpu->sp++;
-
 	cpu->acc = stack_pop(cpu);
+
+	set_flag(cpu, ZERO, cpu->acc == 0);
+	set_flag(cpu, NEGATIVE, cpu->acc & 0b10000000);
 
 	return 0x00; 
 }
 
 uint8_t PLP(CPU *cpu)
 {
-	uint8_t pulled_sr = stack_pop(cpu);
+    cpu->sr = stack_pop(cpu);
+    cpu->sr |= 0x20;
 
-    cpu->sr = (pulled_sr & 0x110011111) | 0b00100000;
-
-	return 0x00; 
+    return 0x00;
 }
 
 uint8_t ROL(CPU *cpu){ 
@@ -696,21 +729,21 @@ uint8_t SEI(CPU *cpu)
 
 uint8_t STA(CPU *cpu)
 { 
-	cpu_write_byte(cpu, cpu->pc, cpu->acc);
+	cpu_write_byte(cpu, cpu->addr_abs, cpu->acc);
 
 	return 0x00; 
 }
 
 uint8_t STX(CPU *cpu)
 { 
-	cpu_write_byte(cpu, cpu->pc, cpu->x);
+	cpu_write_byte(cpu, cpu->addr_abs, cpu->x);
 
 	return 0x00; 
 }
 
 uint8_t STY(CPU *cpu)
 { 
-	cpu_write_byte(cpu, cpu->pc, cpu->y);
+	cpu_write_byte(cpu, cpu->addr_abs, cpu->y);
 
 	return 0x00;
 }
@@ -719,7 +752,8 @@ uint8_t TAX(CPU *cpu)
 { 
 	cpu->x = cpu->acc;
 
-	set_zero_negative_flag(cpu, cpu->x);
+	set_flag(cpu, ZERO, cpu->x == 0);
+	set_flag(cpu, NEGATIVE, cpu->x & 0b10000000);
 
 	return 0x00; 
 }
@@ -728,7 +762,8 @@ uint8_t TAY(CPU *cpu)
 { 
 	cpu->y = cpu->acc;
 
-	set_zero_negative_flag(cpu, cpu->y);
+	set_flag(cpu, ZERO, cpu->y == 0);
+	set_flag(cpu, NEGATIVE, cpu->y & 0b10000000);
 
 	return 0x00; 
 }
@@ -737,7 +772,8 @@ uint8_t TSX(CPU *cpu)
 { 
 	cpu->x = cpu->sp;
 
-	set_zero_negative_flag(cpu, cpu->x);
+	set_flag(cpu, ZERO, cpu->x == 0);
+	set_flag(cpu, NEGATIVE, cpu->x & 0b10000000);
 
 	return 0x00; 
 }
@@ -746,7 +782,8 @@ uint8_t TXA(CPU *cpu)
 { 
 	cpu->acc = cpu->x;
 
-	set_zero_negative_flag(cpu, cpu->acc);
+	set_flag(cpu, ZERO, cpu->acc == 0);
+	set_flag(cpu, NEGATIVE, cpu->acc & 0b10000000);
 
 	return 0x00; 
 }
@@ -755,7 +792,8 @@ uint8_t TXS(CPU *cpu)
 { 
 	cpu->sp = cpu->x;
 
-	set_zero_negative_flag(cpu, cpu->sp);
+	set_flag(cpu, ZERO, cpu->sp == 0);
+	set_flag(cpu, NEGATIVE, cpu->sp & 0b10000000);
 
 	return 0x00; 
 }
@@ -764,7 +802,8 @@ uint8_t TYA(CPU *cpu)
 { 
 	cpu->acc = cpu->y;
 
-	set_zero_negative_flag(cpu, cpu->acc);
+	set_flag(cpu, ZERO, cpu->acc == 0);
+	set_flag(cpu, NEGATIVE, cpu->acc & 0b10000000);
 
 	return 0x00; 
 }
@@ -787,13 +826,15 @@ uint8_t NMI(CPU *cpu)
 // Addressing modes
 uint8_t ACC(CPU *cpu) 
 {
+	cpu->fetched = cpu->acc;
+
 	return 0x00;
 }
 
 uint8_t IND(CPU *cpu) 
 {
-	uint8_t lo_ptr = cpu_fetch(cpu);
-	uint8_t hi_ptr = cpu_fetch(cpu);
+	uint8_t lo_ptr = cpu_read_byte(cpu, cpu->pc++);
+	uint8_t hi_ptr = cpu_read_byte(cpu, cpu->pc++);
 
 	uint16_t ptr = (hi_ptr << 8) | lo_ptr;
 
@@ -806,7 +847,7 @@ uint8_t IND(CPU *cpu)
 
 uint8_t IDY(CPU *cpu) 
 {
-	uint8_t tmp = cpu_fetch(cpu);
+	uint8_t tmp = cpu_read_byte(cpu, cpu->pc++);
 
 	uint8_t lo = cpu_read_byte(cpu, (tmp + cpu->y) & 0xFF);
 	uint8_t hi = cpu_read_byte(cpu, (tmp + cpu->y + 1) & 0xFF);
@@ -818,7 +859,7 @@ uint8_t IDY(CPU *cpu)
 
 uint8_t IDX(CPU *cpu) 
 {
-	uint8_t tmp = cpu_fetch(cpu);
+	uint8_t tmp = cpu_read_byte(cpu, cpu->pc++);
 
 	uint8_t lo = cpu_read_byte(cpu, (tmp + cpu->x) & 0xFF);
 	uint8_t hi = cpu_read_byte(cpu, (tmp + cpu->x + 1) & 0xFF);
@@ -844,21 +885,21 @@ uint8_t IMP(CPU *cpu)
 
 uint8_t ZP0(CPU *cpu)
 {
-	cpu->addr_abs = cpu_fetch(cpu) & 0xFF;
+	cpu->addr_abs = cpu_read_byte(cpu, cpu->pc++) & 0xFF;
 
 	return 0x00;
 }
 
 uint8_t ZPY(CPU *cpu)
 {
-	cpu->addr_abs = (cpu_fetch(cpu) + cpu->y) & 0xFF;
+	cpu->addr_abs = (cpu_read_byte(cpu, cpu->pc++) + cpu->y) & 0xFF;
 
 	return 0x00;
 }
 
 uint8_t ZPX(CPU *cpu)
 {
-	cpu->addr_abs = (cpu_fetch(cpu) + cpu->x) & 0xFF;
+	cpu->addr_abs = (cpu_read_byte(cpu, cpu->pc++) + cpu->x) & 0xFF;
 
 	return 0x00;
 }
@@ -867,6 +908,7 @@ uint8_t ABS(CPU *cpu)
 {
 	uint8_t lo = cpu_read_byte(cpu, cpu->pc++);
     uint8_t hi = cpu_read_byte(cpu, cpu->pc++);
+
     cpu->addr_abs = (hi << 8) | lo;
 
 	return 0x00;
@@ -874,8 +916,8 @@ uint8_t ABS(CPU *cpu)
 
 uint8_t ABX(CPU *cpu)
 {
-	uint8_t lo = cpu_fetch(cpu);
-	uint8_t hi = cpu_fetch(cpu);
+	uint8_t lo = cpu_read_byte(cpu, cpu->pc++);
+	uint8_t hi = cpu_read_byte(cpu, cpu->pc++);
 
 	cpu->addr_abs = ((hi << 8) | lo) + cpu->x;
 
@@ -884,8 +926,8 @@ uint8_t ABX(CPU *cpu)
 
 uint8_t ABY(CPU *cpu)
 {
-	uint8_t lo = cpu_fetch(cpu);
-	uint8_t hi = cpu_fetch(cpu);
+	uint8_t lo = cpu_read_byte(cpu, cpu->pc++);
+	uint8_t hi = cpu_read_byte(cpu, cpu->pc++);
 
 	cpu->addr_abs = ((hi << 8) | lo) + cpu->y;
 
@@ -894,7 +936,7 @@ uint8_t ABY(CPU *cpu)
 
 uint8_t REL(CPU *cpu)
 {
-	cpu->addr_rel = cpu_fetch(cpu);
+	cpu->addr_rel = cpu_read_byte(cpu, cpu->pc++);
 
 	if (cpu->addr_rel & 0b10000000) {
 		cpu->addr_rel |= 0xFF00;

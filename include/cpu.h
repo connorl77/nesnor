@@ -64,7 +64,6 @@ void cpu_write_word(CPU *cpu, uint16_t address, uint16_t data);
 
 bool get_flag(CPU *cpu, StatusFlag flag);
 void set_flag(CPU *cpu, StatusFlag bit, bool val);
-void set_zero_negative_flag(CPU *cpu, uint8_t val);
 
 uint8_t ADC(CPU *cpu);
 uint8_t AND(CPU *cpu);
